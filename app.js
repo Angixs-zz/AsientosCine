@@ -57,30 +57,59 @@
   }
 
   function seedState() {
-    const makeRoom = (id, name, note, levels, rows = 14, cols = 16) => ({
-      id,
-      name,
-      note,
-      rows,
-      cols,
-      seats: Object.fromEntries(
-        Object.entries(levels).map(([seatId, level]) => [seatId, { level, note: '' }])
-      ),
-    });
+    const every = (rows, count) => Object.fromEntries([...rows].map((row) => [row, count]));
+    const merge = (...parts) => Object.assign({}, ...parts);
+
+    const makeRoom = (id, name, note, levels, options = {}) => {
+      const {
+        rows = 14,
+        cols = 16,
+        numbering = 'ltr',
+        rowCounts = {},
+        wheelchairs = {},
+      } = options;
+      const width = Math.max(cols, ...Object.values(rowCounts), 1);
+
+      return {
+        id,
+        name,
+        note,
+        rows,
+        cols: width,
+        numbering,
+        rowCounts,
+        wheelchairs,
+        seats: Object.fromEntries(
+          Object.entries(levels).map(([seatId, level]) => [seatId, { level, note: '' }])
+        ),
+      };
+    };
 
     return {
-      version: 1,
+      version: 2,
       activeRoomId: 'sala-11',
       cinemas: [
         {
           id: 'cinemex',
-          name: 'Cinemex',
+          name: 'Cinépolis Oaxaca',
           rooms: [
             makeRoom(
               'sala-2',
               'Sala 2',
               'En la K se ve bien: asientos 13 y 14. También dentro de las J.',
-              { K13: 2, K14: 2, J13: 1, J14: 1 }
+              { K13: 2, K14: 2, J13: 1, J14: 1 },
+              {
+                rows: 16,
+                cols: 28,
+                numbering: 'rtl',
+                rowCounts: merge(
+                  every('ABCDEF', 22),
+                  { G: 24, H: 21 },
+                  every('IJ', 22),
+                  every('KLMNO', 24),
+                  { P: 28 }
+                ),
+              }
             ),
             makeRoom(
               'sala-3',
@@ -102,6 +131,15 @@
                 H5: 2, H6: 2, H7: 2,
                 J5: 2, J6: 2, J7: 2,
                 G5: 1, G6: 1, G7: 1,
+              },
+              {
+                rows: 12,
+                cols: 15,
+                rowCounts: merge(
+                  every('ABCDEFG', 13),
+                  { H: 15, I: 13, J: 13, K: 13, L: 15 }
+                ),
+                wheelchairs: { I: 2 },
               }
             ),
             makeRoom(
@@ -111,22 +149,79 @@
               { H3: 2, H4: 2, H5: 2, H6: 2, H7: 2, H8: 2, H9: 2, H10: 2 }
             ),
             makeRoom(
+              'sala-8',
+              'Sala 8',
+              'Mapa rescatado de la app de Cinépolis. Sin asientos marcados todavía.',
+              {},
+              {
+                rows: 11,
+                cols: 16,
+                numbering: 'rtl',
+                rowCounts: merge(
+                  every('ABCDEF', 13),
+                  { G: 15, H: 12, I: 13, J: 13, K: 16 }
+                ),
+                wheelchairs: { H: 2 },
+              }
+            ),
+            makeRoom(
               'sala-9',
               'Sala 9',
               'Fila H, asientos 7 y 8.',
-              { H7: 2, H8: 2 }
+              { H7: 2, H8: 2 },
+              {
+                rows: 10,
+                cols: 20,
+                numbering: 'rtl',
+                rowCounts: merge(
+                  every('ABCDEF', 16),
+                  { G: 19, H: 16, I: 16, J: 20 }
+                ),
+                wheelchairs: { H: 2 },
+              }
             ),
             makeRoom(
               'sala-10',
               'Sala 10',
               'Centrados: J13 y J14. En la L, 15 y 16. Santi dice que más abajo se ve mejor.',
-              { J13: 2, J14: 2, L15: 2, L16: 2 }
+              { J13: 2, J14: 2, L15: 2, L16: 2 },
+              {
+                rows: 16,
+                cols: 30,
+                rowCounts: merge(every('ABCDEFGHIJKLMNO', 26), { P: 30 }),
+                wheelchairs: { H: 1 },
+              }
             ),
             makeRoom(
               'sala-11',
               'Sala 11',
               'Zootopia: fila G, asientos 9, 8, 7 y 6.',
-              { G9: 2, G8: 2, G7: 2, G6: 2 }
+              { G9: 2, G8: 2, G7: 2, G6: 2 },
+              {
+                rows: 10,
+                cols: 16,
+                numbering: 'rtl',
+                rowCounts: merge(
+                  every('ABCDEF', 13),
+                  { G: 15, H: 12, I: 13, J: 16 }
+                ),
+                wheelchairs: { H: 2 },
+              }
+            ),
+            makeRoom(
+              'sala-12',
+              'Sala 12',
+              'Mapa rescatado de la app de Cinépolis. Sin asientos marcados todavía.',
+              {},
+              {
+                rows: 10,
+                cols: 16,
+                rowCounts: merge(
+                  every('ABCDE', 13),
+                  { F: 12, G: 15, H: 13, I: 13, J: 16 }
+                ),
+                wheelchairs: { H: 2 },
+              }
             ),
             makeRoom(
               'sala-13',
@@ -152,18 +247,52 @@
     };
   }
 
+  function seatFits(seatId, rows, rowCounts, wheelchairs, cols) {
+    const match = /^([A-Z])(\d{1,2})$/.exec(seatId);
+    if (!match) return false;
+
+    const row = match[1];
+    const index = ROW_LETTERS.indexOf(row);
+    if (index < 0 || index >= rows) return false;
+
+    const count = rowCounts?.[row] ?? cols;
+    const wheel = wheelchairs?.[row] ?? 0;
+    const num = Number(match[2]);
+    return num >= wheel + 1 && num <= count;
+  }
+
   function normalizeRoom(raw, index) {
     const rows = clampInt(raw?.rows, 1, 26, 14);
-    const cols = clampInt(raw?.cols, 1, 30, 16);
+    let cols = clampInt(raw?.cols, 1, 40, 16);
+    const numbering = raw?.numbering === 'rtl' ? 'rtl' : 'ltr';
+    const rowCounts = {};
+    const wheelchairs = {};
+
+    if (raw?.rowCounts && typeof raw.rowCounts === 'object') {
+      for (const [row, value] of Object.entries(raw.rowCounts)) {
+        const rowIndex = ROW_LETTERS.indexOf(row);
+        if (rowIndex < 0 || rowIndex >= rows) continue;
+        const count = clampInt(value, 1, 40, cols);
+        rowCounts[row] = count;
+        cols = Math.max(cols, count);
+      }
+    }
+
+    if (raw?.wheelchairs && typeof raw.wheelchairs === 'object') {
+      for (const [row, value] of Object.entries(raw.wheelchairs)) {
+        const rowIndex = ROW_LETTERS.indexOf(row);
+        if (rowIndex < 0 || rowIndex >= rows) continue;
+        const count = rowCounts[row] ?? cols;
+        const wheel = clampInt(value, 0, 4, 0);
+        if (wheel > 0) wheelchairs[row] = Math.min(wheel, count - 1);
+      }
+    }
+
     const seats = {};
 
     if (raw?.seats && typeof raw.seats === 'object') {
       for (const [seatId, value] of Object.entries(raw.seats)) {
-        const match = /^([A-Z])(\d{1,2})$/.exec(seatId);
-        if (!match) continue;
-        if (ROW_LETTERS.indexOf(match[1]) >= rows) continue;
-        const num = Number(match[2]);
-        if (num < 1 || num > cols) continue;
+        if (!seatFits(seatId, rows, rowCounts, wheelchairs, cols)) continue;
 
         const level = [2, 1, -1].includes(Number(value?.level)) ? Number(value.level) : 0;
         const note = typeof value?.note === 'string' ? value.note.slice(0, 600) : '';
@@ -176,6 +305,9 @@
       name: String(raw?.name || `Sala ${index + 1}`).slice(0, 60),
       rows,
       cols,
+      numbering,
+      rowCounts,
+      wheelchairs,
       note: typeof raw?.note === 'string' ? raw.note.slice(0, 800) : '',
       seats,
     };
@@ -200,14 +332,61 @@
       ? raw.activeRoomId
       : (cinemas.flatMap((cinema) => cinema.rooms)[0]?.id ?? null);
 
-    return { version: 1, activeRoomId, cinemas };
+    return { version: 2, activeRoomId, cinemas };
+  }
+
+  function migrateFromV1(oldState) {
+    const next = seedState();
+    const oldRooms = new Map();
+
+    for (const cinema of oldState?.cinemas ?? []) {
+      for (const room of cinema?.rooms ?? []) {
+        if (room?.id) oldRooms.set(room.id, room);
+      }
+    }
+
+    const used = new Set();
+    for (const cinema of next.cinemas) {
+      cinema.rooms = cinema.rooms.map((room, index) => {
+        const old = oldRooms.get(room.id);
+        if (!old) return room;
+        used.add(room.id);
+        return normalizeRoom({
+          ...room,
+          name: old.name || room.name,
+          note: typeof old.note === 'string' ? old.note : room.note,
+          seats: old.seats && typeof old.seats === 'object' ? old.seats : room.seats,
+        }, index);
+      });
+
+      const oldCinema = (oldState?.cinemas ?? []).find((item) => item.id === cinema.id);
+      for (const oldRoom of oldCinema?.rooms ?? []) {
+        if (!oldRoom?.id || used.has(oldRoom.id)) continue;
+        cinema.rooms.push(normalizeRoom(oldRoom, cinema.rooms.length));
+        used.add(oldRoom.id);
+      }
+    }
+
+    for (const [id, oldRoom] of oldRooms) {
+      if (used.has(id)) continue;
+      next.cinemas[0].rooms.push(normalizeRoom(oldRoom, next.cinemas[0].rooms.length));
+    }
+
+    if (next.cinemas.some((cinema) => cinema.rooms.some((room) => room.id === oldState?.activeRoomId))) {
+      next.activeRoomId = oldState.activeRoomId;
+    }
+
+    return normalizeState(next);
   }
 
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return seedState();
-      return normalizeState(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.cinemas)) return seedState();
+      if ((parsed.version || 1) < 2) return migrateFromV1(parsed);
+      return normalizeState(parsed);
     } catch {
       return seedState();
     }
@@ -251,10 +430,26 @@
     saveState();
   }
 
-  function seatInGrid(seatId, rows, cols) {
-    const match = /^([A-Z])(\d{1,2})$/.exec(seatId);
-    if (!match) return false;
-    return ROW_LETTERS.indexOf(match[1]) < rows && Number(match[2]) <= cols;
+  function roomMaxCols(room) {
+    return Math.max(room.cols || 1, ...Object.values(room.rowCounts || {}), 1);
+  }
+
+  function rowCells(room, row, maxCols) {
+    const count = room.rowCounts?.[row] ?? room.cols;
+    const wheel = Math.min(room.wheelchairs?.[row] ?? 0, count - 1);
+    const cells = [];
+
+    if (room.numbering === 'rtl') {
+      for (let i = 0; i < maxCols - count; i += 1) cells.push(null);
+      for (let num = count; num > wheel; num -= 1) cells.push({ type: 'seat', num });
+      for (let i = 0; i < wheel; i += 1) cells.push({ type: 'wheel' });
+    } else {
+      for (let i = 0; i < wheel; i += 1) cells.push({ type: 'wheel' });
+      for (let num = wheel + 1; num <= count; num += 1) cells.push({ type: 'seat', num });
+      while (cells.length < maxCols) cells.push(null);
+    }
+
+    return cells;
   }
 
   /* ------------------------------------------------------------------ */
@@ -340,18 +535,23 @@
 
     const { cinema, room } = found;
     const counts = countSeats(room);
+    const maxCols = roomMaxCols(room);
     const rowsHtml = [];
 
     for (let r = 0; r < room.rows; r += 1) {
       const row = ROW_LETTERS[r];
-      const seats = [];
-      for (let num = 1; num <= room.cols; num += 1) {
-        seats.push(seatButton(room, row, num));
-      }
+      const cells = rowCells(room, row, maxCols).map((cell) => {
+        if (!cell) return '<span class="seat-gap" aria-hidden="true"></span>';
+        if (cell.type === 'wheel') {
+          return '<span class="seat-wheel" title="Silla de ruedas" aria-label="Espacio para silla de ruedas">♿</span>';
+        }
+        return seatButton(room, row, cell.num);
+      });
+
       rowsHtml.push(`
         <div class="seat-row">
           <span class="row-label">${row}</span>
-          ${seats.join('')}
+          ${cells.join('')}
         </div>`);
     }
 
@@ -359,7 +559,10 @@
       <section class="room-header">
         <div>
           <p class="eyebrow">${esc(cinema.name)}</p>
-          <h2>${esc(room.name)}</h2>
+          <div class="room-title-row">
+            <h2>${esc(room.name)}</h2>
+            ${Object.keys(room.rowCounts || {}).length ? '<span class="badge">Mapa real</span>' : ''}
+          </div>
           <p class="room-note${room.note ? '' : ' muted'}">${room.note ? esc(room.note) : 'Sin observación general de la sala.'}</p>
         </div>
         <div class="room-actions">
@@ -381,7 +584,7 @@
           <span class="stat-label"><i class="swatch avoid"></i>Para evitar</span>
         </div>
         <div class="stat">
-          <span class="stat-num">${room.rows}×${room.cols}</span>
+          <span class="stat-num">${room.rows}×${maxCols}</span>
           <span class="stat-label">Filas × asientos</span>
         </div>
       </section>
@@ -392,15 +595,17 @@
           <p class="screen-label">PANTALLA</p>
         </div>
         <div class="map-scroll">
-          <div class="seat-map" id="seatMap" style="--cols:${room.cols}">
+          <div class="seat-map" id="seatMap" style="--cols:${maxCols}">
             ${rowsHtml.join('')}
           </div>
         </div>
+        <p class="map-scroll-hint">Desliza el mapa para ver toda la sala →</p>
         <div class="legend">
           <span><i class="swatch ideal"></i>Ideal</span>
           <span><i class="swatch acceptable"></i>Aceptable</span>
           <span><i class="swatch avoid"></i>Evitar</span>
           <span><i class="swatch noted"></i>Solo nota</span>
+          <span><i class="swatch wheelchair"></i>Silla de ruedas</span>
         </div>
         <p class="map-hint">Toca un asiento para marcarlo y agregar una observación.</p>
       </section>`;
@@ -575,6 +780,10 @@
     const cinemaOptions = state.cinemas.map((cinema) => (
       `<option value="${esc(cinema.id)}"${cinema.id === selectedCinemaId ? ' selected' : ''}>${esc(cinema.name)}</option>`
     )).join('');
+    const hasCustom = editing && (
+      Object.keys(room.rowCounts || {}).length > 0
+      || Object.keys(room.wheelchairs || {}).length > 0
+    );
 
     openModal(`
       <form id="roomForm">
@@ -599,10 +808,24 @@
             <input id="roomRows" type="number" min="1" max="26" required value="${room?.rows ?? 14}" />
           </label>
           <label class="field">
-            <span>Asientos por fila</span>
-            <input id="roomCols" type="number" min="1" max="30" required value="${room?.cols ?? 16}" />
+            <span>Asientos por fila (máx.)</span>
+            <input id="roomCols" type="number" min="1" max="40" required value="${room?.cols ?? 16}" />
           </label>
         </div>
+
+        <label class="field">
+          <span>Numeración de los asientos</span>
+          <select id="roomNumbering">
+            <option value="ltr"${room?.numbering !== 'rtl' ? ' selected' : ''}>1 a la izquierda →</option>
+            <option value="rtl"${room?.numbering === 'rtl' ? ' selected' : ''}>← 1 a la derecha</option>
+          </select>
+        </label>
+
+        ${hasCustom ? `
+          <label class="check-field">
+            <input type="checkbox" id="roomSimple" />
+            <span>Quitar el mapa personalizado y usar una cuadrícula simple</span>
+          </label>` : ''}
 
         <label class="field">
           <span>Observación de la sala</span>
@@ -632,8 +855,10 @@
     const name = $('#roomName', el.modalCard).value.trim();
     const cinemaId = $('#roomCinema', el.modalCard).value;
     const rows = clampInt($('#roomRows', el.modalCard).value, 1, 26, 14);
-    const cols = clampInt($('#roomCols', el.modalCard).value, 1, 30, 16);
+    const cols = clampInt($('#roomCols', el.modalCard).value, 1, 40, 16);
+    const numbering = $('#roomNumbering', el.modalCard).value === 'rtl' ? 'rtl' : 'ltr';
     const note = $('#roomNote', el.modalCard).value.trim();
+    const simple = Boolean($('#roomSimple', el.modalCard)?.checked);
     const targetCinema = state.cinemas.find((cinema) => cinema.id === cinemaId);
 
     if (!name || !targetCinema) return;
@@ -644,6 +869,9 @@
         name,
         rows,
         cols,
+        numbering,
+        rowCounts: {},
+        wheelchairs: {},
         note,
         seats: {},
       };
@@ -656,9 +884,32 @@
       return;
     }
 
-    const outside = Object.keys(room.seats).filter((seatId) => !seatInGrid(seatId, rows, cols));
+    const nextRowCounts = simple ? {} : { ...(room.rowCounts || {}) };
+    const nextWheelchairs = simple ? {} : { ...(room.wheelchairs || {}) };
+
+    for (const key of Object.keys(nextRowCounts)) {
+      if (ROW_LETTERS.indexOf(key) < 0 || ROW_LETTERS.indexOf(key) >= rows) delete nextRowCounts[key];
+      else nextRowCounts[key] = Math.min(nextRowCounts[key], cols);
+    }
+    for (const key of Object.keys(nextWheelchairs)) {
+      if (ROW_LETTERS.indexOf(key) < 0 || ROW_LETTERS.indexOf(key) >= rows) {
+        delete nextWheelchairs[key];
+        continue;
+      }
+      const count = nextRowCounts[key] ?? cols;
+      nextWheelchairs[key] = Math.min(nextWheelchairs[key], count - 1);
+      if (nextWheelchairs[key] <= 0) delete nextWheelchairs[key];
+    }
+
+    let width = cols;
+    for (const count of Object.values(nextRowCounts)) width = Math.max(width, count);
+
+    const outside = Object.keys(room.seats).filter(
+      (seatId) => !seatFits(seatId, rows, nextRowCounts, nextWheelchairs, width)
+    );
+
     if (outside.length) {
-      const ok = window.confirm(`Al reducir la sala se eliminarán ${outside.length} asiento(s) marcado(s). ¿Continuar?`);
+      const ok = window.confirm(`Con este cambio se eliminarán ${outside.length} asiento(s) marcado(s). ¿Continuar?`);
       if (!ok) return;
       outside.forEach((seatId) => delete room.seats[seatId]);
     }
@@ -666,7 +917,10 @@
     const previous = findRoom(room.id);
     room.name = name;
     room.rows = rows;
-    room.cols = cols;
+    room.cols = width;
+    room.numbering = numbering;
+    room.rowCounts = nextRowCounts;
+    room.wheelchairs = nextWheelchairs;
     room.note = note;
 
     if (previous && previous.cinema.id !== cinemaId) {
