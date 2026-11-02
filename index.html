@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a0f" />
+  <title>AsientosCine — mis mejores asientos</title>
+  <meta name="description" content="Mapa visual de mis asientos favoritos en cada sala de cine, con observaciones y respaldo de datos." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Abrir lista de salas" aria-expanded="false">☰</button>
+    <div class="brand">
+      <span class="brand-badge">🎬</span>
+      <span class="brand-text">
+        <strong>AsientosCine</strong>
+        <small>los mejores asientos, sala por sala</small>
+      </span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn ghost" id="exportBtn" title="Descargar un respaldo JSON">Exportar</button>
+      <button class="btn ghost" id="importBtn" title="Cargar un respaldo JSON">Importar</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden />
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Salas de cine">
+      <div class="sidebar-top">
+        <h2>Salas</h2>
+        <div class="sidebar-top-actions">
+          <button class="btn tiny" id="addCinemaBtn">+ Cine</button>
+          <button class="icon-btn sidebar-close" id="closeSidebarBtn" aria-label="Cerrar lista de salas">✕</button>
+        </div>
+      </div>
+      <div class="room-list" id="roomList"></div>
+      <div class="sidebar-foot">
+        <button class="btn primary block" id="addRoomBtn">+ Nueva sala</button>
+        <button class="btn ghost block danger" id="resetBtn">Restaurar ejemplo</button>
+        <p class="hint">Tus cambios se guardan en este navegador. Exporta un respaldo para llevarlos a otro dispositivo.</p>
+      </div>
+    </aside>
+    <div class="scrim" id="scrim" hidden></div>
+    <main class="main" id="main"></main>
+  </div>
+
+  <div class="scrim" id="sheetScrim" hidden></div>
+  <aside class="sheet" id="seatSheet" aria-label="Editar asiento" hidden>
+    <div id="sheetContent"></div>
+  </aside>
+
+  <div class="modal-wrap" id="modalWrap" hidden>
+    <div class="modal" id="modalCard" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
